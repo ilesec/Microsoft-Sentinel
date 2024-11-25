@@ -1,0 +1,367 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {},
+    "variables": {},
+    "resources": [
+        {
+            "type": "Microsoft.Logic/workflows",
+            "apiVersion": "2017-07-01",
+            "name": "Email-Notification-Dynamic-Recipients",
+            "location": "northeurope",
+            "properties": {
+                "state": "Enabled",
+                "definition": {
+                    "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+                    "contentVersion": "1.0.0.0",
+                    "parameters": {
+                        "Error message recipient": {
+                            "defaultValue": "ilkkahyvonen@microsoft.com",
+                            "type": "String"
+                        },
+                        "$connections": {
+                            "defaultValue": {},
+                            "type": "Object"
+                        }
+                    },
+                    "triggers": {
+                        "Microsoft_Sentinel_incident": {
+                            "type": "ApiConnectionWebhook",
+                            "inputs": {
+                                "host": {
+                                    "connection": {
+                                        "name": "@parameters('$connections')['azuresentinel']['connectionId']"
+                                    }
+                                },
+                                "body": {
+                                    "callback_url": "@listCallbackUrl()"
+                                },
+                                "path": "/incident-creation"
+                            }
+                        }
+                    },
+                    "actions": {
+                        "Select_Entities_from_the_Incident": {
+                            "runAfter": {
+                                "Create_HTML_table_of_the_Alerts": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "Select",
+                            "inputs": {
+                                "from": "@triggerBody()?['object']?['properties']?['relatedEntities']",
+                                "select": {
+                                    "Entity": "@item()?['properties']?['friendlyName']",
+                                    "Entity type": "@item()?['kind']"
+                                }
+                            }
+                        },
+                        "Create_HTML_table_from_the_Entities": {
+                            "runAfter": {
+                                "Select_Entities_from_the_Incident": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "Table",
+                            "inputs": {
+                                "from": "@body('Select_Entities_from_the_Incident')",
+                                "format": "HTML"
+                            }
+                        },
+                        "Send_an_email_if_something_goes_wrong": {
+                            "runAfter": {
+                                "Send_an_email_with_the_composed_message": [
+                                    "Failed",
+                                    "Skipped",
+                                    "TimedOut"
+                                ]
+                            },
+                            "type": "ApiConnection",
+                            "inputs": {
+                                "host": {
+                                    "connection": {
+                                        "name": "@parameters('$connections')['office365']['connectionId']"
+                                    }
+                                },
+                                "method": "post",
+                                "body": {
+                                    "To": "@parameters('Error message recipient')",
+                                    "Subject": "Issue sending Sentinel Incident notification",
+                                    "Body": "<p class=\"editor-paragraph\">Issue sending Incident notification. Please check Logic Apps run history.</p>",
+                                    "Importance": "Normal"
+                                },
+                                "path": "/v2/Mail"
+                            }
+                        },
+                        "Initialize_variable_CustomDetailsArray": {
+                            "runAfter": {
+                                "Select_Alerts_from_the_Incident": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "InitializeVariable",
+                            "inputs": {
+                                "variables": [
+                                    {
+                                        "name": "CustomDetails",
+                                        "type": "array"
+                                    }
+                                ]
+                            }
+                        },
+                        "Send_an_email_with_the_composed_message": {
+                            "runAfter": {
+                                "Compose_E-mail_Message_with_all_the_details": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "ApiConnection",
+                            "inputs": {
+                                "host": {
+                                    "connection": {
+                                        "name": "@parameters('$connections')['office365']['connectionId']"
+                                    }
+                                },
+                                "method": "post",
+                                "body": {
+                                    "To": "@body('Create_HTML_table_from_the_Entities')",
+                                    "Subject": "New Sentinel Incident with ID @{triggerBody()?['object']?['properties']?['incidentNumber']}",
+                                    "Body": "<p class=\"editor-paragraph\">New incident created in Microsoft Sentinel. Incident details:<br><br>@{outputs('Compose_E-mail_Message_with_all_the_details')}<br></p><br>",
+                                    "Importance": "Normal"
+                                },
+                                "path": "/v2/Mail"
+                            }
+                        },
+                        "Initialize_variable_Contacts": {
+                            "runAfter": {
+                                "Initialize_variable_CustomDetailsArray": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "InitializeVariable",
+                            "inputs": {
+                                "variables": [
+                                    {
+                                        "name": "Contacts",
+                                        "type": "array"
+                                    }
+                                ]
+                            }
+                        },
+                        "For_each_Alert": {
+                            "foreach": "@triggerBody()?['object']?['properties']?['Alerts']",
+                            "actions": {
+                                "Parse_JSON_of_the_Alert_Custom_Details": {
+                                    "type": "ParseJson",
+                                    "inputs": {
+                                        "content": "@item()?['properties']?['additionalData']?['Custom Details']",
+                                        "schema": {
+                                            "type": "object",
+                                            "properties": {
+                                                "CustomerName": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "WorkspaceSubId": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "WorkspaceResourceId": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                "For_each_CustomerName": {
+                                    "foreach": "@body('Parse_JSON_of_the_Alert_Custom_Details')?['CustomerName']",
+                                    "actions": {
+                                        "Run_query_and_list_results_V2_for_CustomerName_parameter": {
+                                            "type": "ApiConnection",
+                                            "inputs": {
+                                                "host": {
+                                                    "connection": {
+                                                        "name": "@parameters('$connections')['azuremonitorlogs']['connectionId']"
+                                                    }
+                                                },
+                                                "method": "post",
+                                                "body": {
+                                                    "query": "_GetWatchlist('CustomerEmailList')\n| where Customer =~ \"@{item()}\"\n| project Mails",
+                                                    "timerangetype": "Relative",
+                                                    "timerange": {
+                                                        "relativeTimeRange": "Last 24 hours"
+                                                    }
+                                                },
+                                                "path": "/queryDataV2",
+                                                "queries": {
+                                                    "subscriptions": "0b1fd8d4-0a3c-4163-9173-e8f7a7f03159",
+                                                    "resourcegroups": "Sentinel",
+                                                    "resourcetype": "Log Analytics Workspace",
+                                                    "resourcename": "SentinelInstance"
+                                                }
+                                            }
+                                        },
+                                        "Parse_JSON_of_Watchlist_query_output": {
+                                            "runAfter": {
+                                                "Run_query_and_list_results_V2_for_CustomerName_parameter": [
+                                                    "Succeeded"
+                                                ]
+                                            },
+                                            "type": "ParseJson",
+                                            "inputs": {
+                                                "content": "@body('Run_query_and_list_results_V2_for_CustomerName_parameter')?['value']",
+                                                "schema": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "Mails": {
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "Mails"
+                                                        ]
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        "For_each_JSON_output": {
+                                            "foreach": "@outputs('Parse_JSON_of_Watchlist_query_output')['body']",
+                                            "actions": {
+                                                "Append_to_array_variable_Contacts": {
+                                                    "type": "AppendToArrayVariable",
+                                                    "inputs": {
+                                                        "name": "Contacts",
+                                                        "value": "@items('For_each_JSON_output')['Mails']"
+                                                    }
+                                                }
+                                            },
+                                            "runAfter": {
+                                                "Parse_JSON_of_Watchlist_query_output": [
+                                                    "Succeeded"
+                                                ]
+                                            },
+                                            "type": "Foreach"
+                                        }
+                                    },
+                                    "runAfter": {
+                                        "Append_to_array_variable_CustomDetailsArray": [
+                                            "Succeeded"
+                                        ]
+                                    },
+                                    "type": "Foreach"
+                                },
+                                "Append_to_array_variable_CustomDetailsArray": {
+                                    "runAfter": {
+                                        "Parse_JSON_of_the_Alert_Custom_Details": [
+                                            "Succeeded"
+                                        ]
+                                    },
+                                    "type": "AppendToArrayVariable",
+                                    "inputs": {
+                                        "name": "CustomDetails",
+                                        "value": "@body('Parse_JSON_of_the_Alert_Custom_Details')"
+                                    }
+                                }
+                            },
+                            "runAfter": {
+                                "Initialize_variable_Contacts": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "Foreach"
+                        },
+                        "Join_Contacts_with_union_of_itselt": {
+                            "runAfter": {
+                                "For_each_Alert": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "Join",
+                            "inputs": {
+                                "from": "@union(variables('Contacts'),variables('Contacts'))",
+                                "joinWith": ";"
+                            }
+                        },
+                        "Select_Alerts_from_the_Incident": {
+                            "runAfter": {},
+                            "type": "Select",
+                            "inputs": {
+                                "from": "@triggerBody()?['object']?['properties']?['Alerts']",
+                                "select": {
+                                    "Alerts": "@item()?['properties']?['alertDisplayName']"
+                                }
+                            }
+                        },
+                        "Create_HTML_table_of_the_Alerts": {
+                            "runAfter": {
+                                "Select_Alerts_from_the_Incident": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "Table",
+                            "inputs": {
+                                "from": "@body('Select_Alerts_from_the_Incident')",
+                                "format": "HTML"
+                            }
+                        },
+                        "Create_HTML_table_of_the_CustomDetailsArray": {
+                            "runAfter": {
+                                "Join_Contacts_with_union_of_itselt": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "Table",
+                            "inputs": {
+                                "from": "@variables('CustomDetails')",
+                                "format": "HTML"
+                            }
+                        },
+                        "Compose_E-mail_Message_with_all_the_details": {
+                            "runAfter": {
+                                "Create_HTML_table_from_the_Entities": [
+                                    "Succeeded"
+                                ],
+                                "Create_HTML_table_of_the_CustomDetailsArray": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "Compose",
+                            "inputs": "<!DOCTYPE html>\n<html>\n\n<style>\n#testID table, table th, table td {border: 1px solid white}\n</style>\n<table style=\"width: 100%\" border=\"1px solid white\" width=\"100%\">\n\n<tbody>\n\n<tr>\n<td style=\"width: 19%;\" align=\"center\" width=\"19%\">\n<strong><img src=\"https://azure.microsoft.com/svghandler/azure-sentinel?width=150&amp;height=79\" alt=\"\" /></strong>\n</td>\n\n<td style=\"width: 41.1434%;\" width=\"48%\">\n<p style=\"text-align: center;\"><span style=\"font-size: 16pt;\"><strong></strong></span></p>\n<p style=\"text-align: center;\"><strong>Microsoft Sentinel incident report</strong></p>\n</td>\n\n<td style=\"width: 20%;\" width=\"20%\">\n<p><span style=\"font-size: 12pt;\"><strong>Incident ID: @{triggerBody()?['object']?['properties']?['incidentNumber']}</strong></span></p>\n<p><span style=\"font-size: 13pt;\"><strong><a href=\"@{triggerBody()?['object']?['properties']?['incidentUrl']}\">View incident</a></strong></span></p>\n</td>\n\n</tr>\n\n<tr>\n<td style=\"width: 93.1434%;\" colspan=\"4\" width=\"100%\">\n<p>Incident title:</p>\n<p><span style=\"font-size: 16pt;\"><strong>@{triggerBody()?['object']?['properties']?['title']}</strong></span></p>\n<p>&nbsp;</p>\n</td>\n</tr>\n\n</tbody>\n</table>\n\n<table style=\"width: 100%; border-collapse: collapse;\" border=\"1\" width=\"100%\">\n\n<tbody>\n\n<tr style=\"vertical-align: top;\">\n<td style=\"width: 23.25%; height: 190px;\">\n<p><span style=\"font-size: 12pt;\"><strong>Creation time</strong></span><br /><br/>\n<span style=\"font-size: 12.0pt;\">@{triggerBody()?['object']?['properties']?['createdTimeUtc']}</span></p>\n</td>\n\n<td style=\"width: 23.25%; height: 190px;\">\n<p><span style=\"font-size: 12pt;\"><strong>Severity</strong></span><br /><br/>\n<span style=\"font-size: 12.0pt;\">@{triggerBody()?['object']?['properties']?['severity']}</span></p>\n</td>\n\n<td style=\"width: 23.3934%; height: 190px;\">\n<p><span style=\"font-size: 12pt;\"><strong>Alert providers</strong></span><br /><br/>\n<span style=\"font-size: 12.0pt;\">@{join(triggerBody()?['object']?['properties']?['additionalData']?['alertProductNames'], '<br />')}</span></p>\n</td>\n\n<td style=\"width: 23.25%; height: 190px;\">\n<p><span style=\"font-size: 12pt;\"><strong>Tactics</strong></span><br /><br/>\n<span style=\"font-size: 12.0pt;\">@{join(triggerBody()?['object']?['properties']?['additionalData']?['tactics'], '<br />')}</span></p>\n</td>\n</tr>\n\n<td style=\"width: 93.1434%;\" colspan=\"4\" width=\"100%\">\n<p><span style=\"font-size: 12pt;\"><strong>Description</strong></span><br /><br />\n<span style=\"font-size: 12.0pt;\">@{triggerBody()?['object']?['properties']?['description']}</span></p>\n</td>\n</tr>\n\n<tr style=\"vertical-align: top;\">\n<td style=\"width: 46.5%;\" colspan=\"2\" width=\"50%\">\n<p><span style=\"font-size: 12pt;\"><strong>Entities</strong>@{body('Create_HTML_table_from_the_Entities')}</span></p>\n\n</td>\n\n<td style=\"width: 46.6434%;\" colspan=\"2\" width=\"50%\"><p><span style=\"font-size: 12pt;\">@{body('Create_HTML_table_of_the_Alerts')}</span></p>\n\n</td>\n</tr>\n\n<td style=\"width: 93.1434%;\" colspan=\"4\" width=\"100%\">\n<p><span style=\"font-size: 12pt;\"><strong>Incident Custom Details</strong></span>@{body('Create_HTML_table_of_the_CustomDetailsArray')}<br /><br />\n<span style=\"font-size: 12.0pt;\"></span></p>\n</td>\n</tr>\n\n</tbody>\n</table>\n</html>"
+                        }
+                    },
+                    "outputs": {}
+                },
+                "parameters": {
+                    "$connections": {
+                        "value": {
+                            "azuresentinel": {
+                                "id": "/subscriptions/0b1fd8d4-0a3c-4163-9173-e8f7a7f03159/providers/Microsoft.Web/locations/northeurope/managedApis/azuresentinel",
+                                "connectionId": "/subscriptions/0b1fd8d4-0a3c-4163-9173-e8f7a7f03159/resourceGroups/Sentinel/providers/Microsoft.Web/connections/azuresentinel-1",
+                                "connectionName": "azuresentinel-1"
+                            },
+                            "office365": {
+                                "id": "/subscriptions/0b1fd8d4-0a3c-4163-9173-e8f7a7f03159/providers/Microsoft.Web/locations/northeurope/managedApis/office365",
+                                "connectionId": "/subscriptions/0b1fd8d4-0a3c-4163-9173-e8f7a7f03159/resourceGroups/Sentinel/providers/Microsoft.Web/connections/office365",
+                                "connectionName": "office365"
+                            },
+                            "azuremonitorlogs": {
+                                "id": "/subscriptions/0b1fd8d4-0a3c-4163-9173-e8f7a7f03159/providers/Microsoft.Web/locations/northeurope/managedApis/azuremonitorlogs",
+                                "connectionId": "/subscriptions/0b1fd8d4-0a3c-4163-9173-e8f7a7f03159/resourceGroups/Sentinel/providers/Microsoft.Web/connections/azuremonitorlogs",
+                                "connectionName": "azuremonitorlogs"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    ]
+}
