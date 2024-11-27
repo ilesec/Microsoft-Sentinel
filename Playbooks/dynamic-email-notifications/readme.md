@@ -3,6 +3,9 @@
 
 Author: Ilkka Hyvönen
 
+## Article explaining the details
+The original article explaining the steps is in [LinkedIn](https://www.linkedin.com/pulse/microsoft-sentinel-playbook-sending-e-mail-alert-details-hyv%C3%B6nen-gsmwf/)
+
 ## Pre-requisites:
 1. An O365 account to be used to send email notification (The user account will be used in O365 connector (Send an email).).
 2. Microsoft Log Analytics connector is used to run the Log Analytics workspace query.
