@@ -1,0 +1,63 @@
+{
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "title": "View alert details such as custom details",
+    "author": {
+        "name": "Ilkka Hyvönen"
+	  }
+  },
+  "parameters": {
+    "workbookType": {
+      "type": "string",
+      "defaultValue": "Sentinel",
+      "metadata": {
+        "description": "The gallery that the workbook will been shown under. Supported values include workbook, tsg, etc. Usually, this is 'workbook'"
+      }
+    },
+    "workbookSourceId": {
+      "type": "string",
+      "defaultValue": "Azure Monitor",
+      "metadata": {
+        "description": "The id of resource instance to which the workbook will be associated"
+      }
+    },
+    "workbookId": {
+      "type": "string",
+      "defaultValue": "[newGuid()]",
+      "metadata": {
+        "description": "The unique guid for this workbook instance"
+      }
+    },
+    "workbookDisplayName": {
+      "type": "string",
+      "defaultValue": "Alert Investigation Workbook",
+      "metadata": {
+        "description": "The friendly name for the workbook that is used in the Gallery or Saved List.  This name must be unique within a resource group."
+      }
+    }
+	},
+  "resources": [
+    {
+      "name": "[parameters('workbookId')]",
+      "type": "microsoft.insights/workbooks",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2022-04-01",
+      "dependsOn": [],
+      "kind": "shared",
+      "properties": {
+        "displayName": "[parameters('workbookDisplayName')]",
+        "serializedData": "{\"version\":\"Notebook/1.0\",\"items\":[{\"type\":9,\"content\":{\"version\":\"KqlParameterItem/1.0\",\"parameters\":[{\"id\":\"f046681a-d502-4370-9a04-736042ed7e47\",\"version\":\"KqlParameterItem/1.0\",\"name\":\"Subscription\",\"type\":6,\"isRequired\":true,\"typeSettings\":{\"additionalResourceOptions\":[],\"includeAll\":true,\"showDefault\":false},\"value\":\"\"},{\"id\":\"903a0628-df2f-4a7d-93ac-80fbf48032ec\",\"version\":\"KqlParameterItem/1.0\",\"name\":\"Workspace\",\"type\":5,\"isRequired\":true,\"query\":\"resources\\r\\n| where type == 'microsoft.operationalinsights/workspaces'\\r\\n| project id, name\\r\\n| order by tolower(name) asc\",\"crossComponentResources\":[\"{Subscription}\"],\"typeSettings\":{\"additionalResourceOptions\":[],\"showDefault\":false},\"timeContext\":{\"durationMs\":2592000000},\"queryType\":1,\"resourceType\":\"microsoft.resourcegraph/resources\",\"value\":\"\"},{\"id\":\"d6f204f2-d447-4657-821e-6899bb7660c1\",\"version\":\"KqlParameterItem/1.0\",\"name\":\"IncidentID\",\"label\":\"Sentinel Incident ID\",\"type\":1,\"isRequired\":true,\"isGlobal\":true,\"value\":\"\"}],\"style\":\"above\",\"queryType\":0,\"resourceType\":\"microsoft.resourcegraph/resources\"},\"name\":\"GlobalParameters\"},{\"type\":1,\"content\":{\"json\":\"## Incident Alert Details Workbook\\n---\\n\\nThis Workbook shows Alert Details based on Incident Number, along with parameters such as Custom Details.\"},\"name\":\"text - 2\"},{\"type\":3,\"content\":{\"version\":\"KqlItem/1.0\",\"query\":\"let incidentIdentifier = '{IncidentID}';\\r\\nSecurityIncident\\r\\n| where IncidentNumber ==  incidentIdentifier\\r\\n| summarize arg_max(TimeGenerated,CreatedTime,Status, Severity, Owner, AdditionalData, IncidentUrl, Comments, Classification,ClassificationReason, ClassificationComment,Labels, Title, AlertIds) by IncidentNumber\\r\\n| where array_length(AlertIds) > 0\\r\\n| extend Tactics = todynamic(AdditionalData.tactics)\\r\\n| extend Product = todynamic((parse_json(tostring(AdditionalData.alertProductNames))[0]))\\r\\n| extend Tags = extract_all('labelName\\\":\\\"(.*?)\\\"',tostring(Labels))\\r\\n| extend Owner = case(tostring(Owner.assignedTo)==\\\"\\\", \\\"Unassigned\\\",tostring(Owner)), Products = strcat_array(AdditionalData.alertProductNames, \\\", \\\"), Alerts = tostring(AdditionalData.alertsCount), Bookmarks = tostring(AdditionalData.bookmarksCount), Comments = tostring(AdditionalData.commentsCount), Tactics = strcat_array(AdditionalData.tactics, \\\", \\\"), Labels = strcat_array(Tags, \\\", \\\")\\r\\n| project Title, CreatedTime, Status, Severity, Owner, Comments, Classification, ClassificationReason, ClassificationComment, Alerts, Labels, Tags, Tactics, Products, Bookmarks\\r\\n\\r\\n\",\"size\":1,\"timeContext\":{\"durationMs\":2592000000},\"exportToExcelOptions\":\"all\",\"queryType\":0,\"resourceType\":\"microsoft.operationalinsights/workspaces\",\"crossComponentResources\":[\"{Workspace}\"],\"visualization\":\"table\",\"tileSettings\":{\"titleContent\":{\"columnMatch\":\"Title\",\"formatter\":1},\"showBorder\":false}},\"name\":\"Get Incidents\"},{\"type\":3,\"content\":{\"version\":\"KqlItem/1.0\",\"query\":\"let incidentIdentifier = '{IncidentID}';\\r\\nSecurityIncident\\r\\n| where IncidentNumber == incidentIdentifier\\r\\n| summarize arg_max(LastModifiedTime,*) by tostring(IncidentNumber)\\r\\n| extend Alerts = extract(\\\"[(.*?)]\\\", 1, tostring(AlertIds))\\r\\n| mv-expand AlertIds to typeof(string)\\r\\n| project AlertIds\\r\\n| join (SecurityAlert) on $left.AlertIds == $right.SystemAlertId\\r\\n| extend CustomDetails = parse_json(tostring(ExtendedProperties)).[\\\"Custom Details\\\"]\\r\\n| project AlertId = AlertIds, TimeGenerated, DisplayName, AlertSeverity, Description, CustomDetails, Entities\",\"size\":0,\"queryType\":0,\"resourceType\":\"microsoft.operationalinsights/workspaces\",\"crossComponentResources\":[\"{Workspace}\"]},\"name\":\"query - 3\"},{\"type\":3,\"content\":{\"version\":\"KqlItem/1.0\",\"query\":\"\",\"size\":0,\"timeContext\":{\"durationMs\":86400000},\"queryType\":0,\"resourceType\":\"microsoft.operationalinsights/workspaces\"},\"name\":\"query - 4\"}],\"isLocked\":false,\"fallbackResourceIds\":[\"azure monitor\"],\"fromTemplateId\":\"sentinel-UserWorkbook\"}",
+        "version": "1.0",
+        "sourceId": "[parameters('workbookSourceId')]",
+        "category": "[parameters('workbookType')]"
+      }
+    }
+  ],
+  "outputs": {
+    "workbookId": {
+      "type": "string",
+      "value": "[resourceId( 'microsoft.insights/workbooks', parameters('workbookId'))]"
+    }
+  },
+  "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#"
+}
