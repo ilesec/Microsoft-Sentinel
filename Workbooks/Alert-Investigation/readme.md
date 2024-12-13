@@ -1,5 +1,8 @@
 # Alert Investigation Sentinel Workbook
 💡 Workbook to view Sentinel Alert details such as Custom Details
+💡 It will unpack all custom details into columns for easier viewing
+
+![Screenshot of the deployment template.](https%3A%2F%2Fraw.githubusercontent.com%2Filesec%2FMicrosoft-Sentinel%2Frefs%2Fheads%2Fmain%2FWorkbooks%2FWorkbook.png)
 
 Author: Ilkka Hyvönen
 
