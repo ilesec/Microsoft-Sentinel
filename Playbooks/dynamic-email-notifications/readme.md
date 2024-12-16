@@ -1,7 +1,8 @@
 # Send dynamic email notifications Sentinel Playbook
-💡 Playbook to send e-mail notifications to resource owners or other stakeholders based on log data. The e-mail notification includes Alert Custom Details.
-🆕 Now includes a CC field in addition to To field
-🆕 Parametrized Watchlist name and columns for To and CC columns in the Watchlist
+💡 Playbook to send e-mail notifications to resource owners or other stakeholders based on log data. <br/>
+💡 The e-mail notification includes Alert Custom Details. <br/>
+🆕 Now includes a CC field in addition to To field <br/>
+🆕 Parametrized Watchlist name and columns for To and CC columns in the Watchlist <br/>
 
 Author: Ilkka Hyvönen
 
