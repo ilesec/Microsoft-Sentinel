@@ -1,6 +1,6 @@
 # Alert Investigation Sentinel Workbook
-💡 Workbook to view Sentinel Alert details such as Custom Details and original alert query output
-💡 It will unpack all custom details into columns for easier viewing
+💡 Workbook to view Sentinel Alert details such as Custom Details and original alert query output </br>
+💡 It will unpack all custom details into columns for easier viewing </br>
 
 ![Screenshot of the workbook](https://github.com/ilesec/Microsoft-Sentinel/blob/main/Workbooks/Alert-Investigation/workbook.png?raw=true)
 
