@@ -4,6 +4,9 @@
 
 Author: Ilkka Hyvönen
 
+Check out the LinkedIn [article](https://www.linkedin.com/pulse/sentinel-workbook-view-custom-details-alert-query-output-hyv%25C3%25B6nen-satif/) describing the Workbook.
+
+
 ![Screenshot of the workbook](https://github.com/ilesec/Microsoft-Sentinel/blob/main/Workbooks/Alert-Investigation/workbook.png?raw=true)
 
 ## Instructions
