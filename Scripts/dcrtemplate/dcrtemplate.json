@@ -1,0 +1,85 @@
+{
+    "$schema" : "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion" : "1.0.0.0",
+    "metadata": {
+        "title": "Deploy a Data Collection Rule for Workspace Transformations"
+    },
+    "parameters": {
+        "dataCollectionRuleName": {
+            "type": "string",
+            "metadata": {
+                "description": "Specifies the name of the Data Collection Rule to create."
+            }
+        },
+       "location": {
+            "type": "string",
+            "defaultValue": "northeurope",
+            "metadata": {
+                "description": "Specifies the location in which to create the Data Collection Rule."
+            }
+        },
+        "workspaceResourceId": {
+            "type": "string",
+            "metadata": {
+                "description": "Specifies the Azure resource ID of the Log Analytics workspace to use. Format is /subscriptions/<subscription id>/resourceGroups/<resource group name>/providers/microsoft.operationalinsights/workspaces/<workspacename>"
+            }
+        },
+        "streamIdentifier": {
+            "type": "string",
+            "metadata": {
+                "description": "Specifies the name of the stream"
+            }
+        },
+        "transformationQuery": {
+            "type": "string",
+            "metadata": {
+                "description": "Specifies the KQL tranformation"
+            }
+        },
+        "inputStream": {
+            "type": "string",
+            "metadata": {
+                "description": "Specifies the source table that the KQL is transforming. Format is Custom-<tablename> or Microsoft-<tablename>"
+            }
+        },
+        "outputStream": {
+            "type": "string",
+            "metadata": {
+                "description": "Specifies the table where the transformed data will be written. Format is Custom-<tablename> or Microsoft-<tablename>"
+            }
+        }
+    },
+    "variables": {},
+    "resources": [
+        {
+            "type": "Microsoft.Insights/dataCollectionRules",
+            "apiVersion": "2023-03-11",
+            "name": "[parameters('dataCollectionRuleName')]",
+            "location": "[parameters('location')]",
+            "kind": "WorkspaceTransforms",
+            "properties": {
+                "dataSources": {},
+                "destinations": {
+                    "logAnalytics": [
+                        {
+                            "workspaceResourceId": "[parameters('workspaceResourceId')]",
+                            "name": "[parameters('streamIdentifier')]"
+                        }
+                    ]
+                },
+                "dataFlows": [
+                    {
+                        "streams": [
+                            "[parameters('inputStream')]"
+                        ],
+                        "destinations": [
+                            "[parameters('streamIdentifier')]"
+                        ],
+                        "transformKql": "[parameters('transformationQuery')]",
+                        "outputStream": "[parameters('outputStream')]"
+                    }
+                ]
+            }
+        }
+    ]
+}
