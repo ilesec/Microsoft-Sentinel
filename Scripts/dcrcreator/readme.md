@@ -1,5 +1,9 @@
 # Data Collection Rule creation tool for Workspace Tranformations
-💡 Helps create DCR's for workspace transformation </br>
+💡 A script to create and deploy Data Collection Rules with Workspace Transformation </br>
+💡 Run in Azure Cloud Shell </br>
+💡 Enter a set of parameters which will be used to generate the rule and deploy it </br>
+👉 Currently only supports 1 stream at the moment </br>
+👉 Review the limitations of Workspace Trasformation such as supported tables </br>
 
 Author: Ilkka Hyvönen
 
