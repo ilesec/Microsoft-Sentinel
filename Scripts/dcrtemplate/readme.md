@@ -1,5 +1,6 @@
 # Data Collection Rule template for Workspace Tranformations
-💡 Helps create DCR's for workspace transformation </br>
+💡 Deployment template to deploy Workspace Transformation Data Collection Rules </br>
+💡 No need to export and modify existing DCR's, you instead deploy this template via a link and enter required parameters </br>
 
 Author: Ilkka Hyvönen
 
