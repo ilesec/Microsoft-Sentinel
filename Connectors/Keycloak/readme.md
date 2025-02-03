@@ -15,4 +15,4 @@ The original article explaining the steps is in [LinkedIn](https://www.linkedin.
 ## Instructions:
 Use the deploy button below and customize any parameters if required. After deployment, take a note of the ImmutableId and Logsingestion API endpoint. These will be used for Logstash plugin configuration.
 
-[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://raw.githubusercontent.com/ilesec/Microsoft-Sentinel/refs/heads/main/Connectors/Keycloak/azuredeploy.json)
+[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Filesec%2FMicrosoft-Sentinel%2Frefs%2Fheads%2Fmain%2FConnectors%2FKeycloak%2Fazuredeploy.json)
